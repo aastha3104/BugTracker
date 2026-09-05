@@ -2,10 +2,14 @@ import { useState } from "react";
 import { useBugs } from "../context/BugContext";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import AdminSidebar from "../components/AdminSidebar";
+import { useAuth } from "../context/AuthContext";
 
 function CreateBug() {
-  const { addBug } = useBugs();
+  const { addBug, saving, error } = useBugs();
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const [submitError, setSubmitError] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -25,10 +29,16 @@ function CreateBug() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    addBug(formData);
+    setSubmitError("");
+    try {
+      await addBug(formData);
+    } catch (requestError) {
+      setSubmitError(requestError.message);
+      return;
+    }
 
     setFormData({
       title: "",
@@ -42,8 +52,10 @@ function CreateBug() {
     navigate("/bugs");
   };
 
+  const dashboardPath = role === "admin" ? "/admin/dashboard" : "/dashboard";
+
   return (
-    <div className="app"><Sidebar /><main className="page">
+    <div className="app">{role === "admin" ? <AdminSidebar /> : <Sidebar />}<main className="page">
       <div className="page-top">
         <div>
           <h1>Create New Bug</h1>
@@ -51,13 +63,7 @@ function CreateBug() {
         </div>
 
         <div className="page-actions">
-          <button
-            className="secondary-btn"
-            onClick={() => navigate("/dashboard")}
-          >
-            Dashboard
-          </button>
-
+          <button className="secondary-btn" onClick={() => navigate(dashboardPath)}>Back to Dashboard</button>
           <button
             className="secondary-btn"
             onClick={() => navigate("/bugs")}
@@ -68,6 +74,7 @@ function CreateBug() {
       </div>
 
       <form className="bug-form" onSubmit={handleSubmit}>
+        {(submitError || error) && <p className="no-bugs">Unable to create bug: {submitError || error}</p>}
         <div className="form-group">
           <label>Bug Title</label>
 
@@ -148,8 +155,8 @@ function CreateBug() {
           ></textarea>
         </div>
 
-        <button type="submit" className="create-btn">
-          Create Bug
+        <button type="submit" className="create-btn" disabled={saving}>
+          {saving ? "Creating..." : "Create Bug"}
         </button>
       </form>
     </main></div>

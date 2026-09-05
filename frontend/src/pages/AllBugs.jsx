@@ -2,10 +2,13 @@ import { useState } from "react";
 import { useBugs } from "../context/BugContext";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import AdminSidebar from "../components/AdminSidebar";
+import { useAuth } from "../context/AuthContext";
 
 function AllBugs() {
-  const { bugs, updateBug, deleteBug } = useBugs();
+  const { bugs, updateBug, deleteBug, loading, saving, error } = useBugs();
   const navigate = useNavigate();
+  const { role } = useAuth();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -26,31 +29,40 @@ function AllBugs() {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this bug?"
     );
 
     if (confirmDelete) {
-      deleteBug(id);
+      try {
+        await deleteBug(id);
+      } catch {
+        // The context retains the API error for display below.
+      }
     }
   };
 
-  const handleUpdate = (e) => {
+  const handleUpdate = async (e) => {
     e.preventDefault();
 
-    updateBug(editingBug.id, {
-      title: editingBug.title,
-      priority: editingBug.priority,
-      severity: editingBug.severity,
-      status: editingBug.status,
-    });
-
-    setEditingBug(null);
+    try {
+      await updateBug(editingBug.id, {
+        title: editingBug.title,
+        priority: editingBug.priority,
+        severity: editingBug.severity,
+        status: editingBug.status,
+      });
+      setEditingBug(null);
+    } catch {
+      // The context retains the API error for display below.
+    }
   };
 
+  const dashboardPath = role === "admin" ? "/admin/dashboard" : "/dashboard";
+
   return (
-    <div className="app"><Sidebar /><main className="page">
+    <div className="app">{role === "admin" ? <AdminSidebar /> : <Sidebar />}<main className="page">
 
       {/* PAGE HEADER */}
       <div className="page-top">
@@ -62,7 +74,7 @@ function AllBugs() {
         <div className="page-actions">
           <button
             className="secondary-btn"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate(dashboardPath)}
           >
             Dashboard
           </button>
@@ -106,6 +118,7 @@ function AllBugs() {
           <option value="Critical">Critical</option>
         </select>
       </div>
+      {error && <p className="no-bugs">API error: {error}</p>}
 
       {/* BUG TABLE */}
       <div className="bugs-section">
@@ -117,12 +130,13 @@ function AllBugs() {
               <th>Priority</th>
               <th>Severity</th>
               <th>Status</th>
+              {role === "admin" && <th>Reported By</th>}
               <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {filteredBugs.map((bug) => {
+            {!loading && filteredBugs.map((bug) => {
               const priority = bug.priority || "Low";
               const severity = bug.severity || "Minor";
               const status = bug.status || "Open";
@@ -159,6 +173,8 @@ function AllBugs() {
                     </span>
                   </td>
 
+                  {role === "admin" && <td>{bug.reportedBy?.name || "Legacy record"}</td>}
+
                   <td className="bug-actions">
                     <button
                       className="edit-btn"
@@ -180,9 +196,8 @@ function AllBugs() {
           </tbody>
         </table>
 
-        {filteredBugs.length === 0 && (
-          <p className="no-bugs">No bugs found.</p>
-        )}
+        {loading && <p className="no-bugs">Loading bugs...</p>}
+        {!loading && filteredBugs.length === 0 && <p className="no-bugs">No bugs found.</p>}
       </div>
 
       {/* EDIT MODAL */}
@@ -273,8 +288,8 @@ function AllBugs() {
                   Cancel
                 </button>
 
-                <button type="submit" className="save-btn">
-                  Save Changes
+                <button type="submit" className="save-btn" disabled={saving}>
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

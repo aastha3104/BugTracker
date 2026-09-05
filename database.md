@@ -1,0 +1,5 @@
+apskaastha3_db_user
+Manhas123456789
+
+admin@example.com
+StrongPassword123!

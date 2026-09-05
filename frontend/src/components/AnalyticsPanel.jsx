@@ -1,16 +1,16 @@
 import { useBugs } from "../context/BugContext";
 
 const priorities = [
-  { name: "Critical", color: "#ff5d7d" },
-  { name: "High", color: "#ff9f5a" },
-  { name: "Medium", color: "#f6cf62" },
-  { name: "Low", color: "#2dd4bf" },
+  { name: "Critical", color: "#111111" },
+  { name: "High", color: "#444444" },
+  { name: "Medium", color: "#888888" },
+  { name: "Low", color: "#c5c5c5" },
 ];
 
 const statuses = [
-  { name: "Open", color: "#ff5d7d" },
-  { name: "In Progress", color: "#5aa7ff" },
-  { name: "Resolved", color: "#2dd4bf" },
+  { name: "Open", color: "#222222" },
+  { name: "In Progress", color: "#777777" },
+  { name: "Resolved", color: "#b5b5b5" },
 ];
 
 function AnalyticsPanel() {

@@ -1,6 +1,6 @@
 function StatCard({ title, value, icon, type }) {
   return (
-    <div className={`stat-card stat-${type}`}>
+    <article className={`stat-card stat-${type}`}>
 
       <div className="stat-top">
 
@@ -12,7 +12,7 @@ function StatCard({ title, value, icon, type }) {
 
       </div>
 
-      <h2>{value}</h2>
+      <h2 className="stat-value">{value}</h2>
 
       <div className="stat-line">
         <span></span>
@@ -28,7 +28,7 @@ function StatCard({ title, value, icon, type }) {
           : "Successfully closed"}
       </small>
 
-    </div>
+    </article>
   );
 }
 

@@ -4,21 +4,25 @@ import BugTable from "../components/BugTable";
 import AnalyticsPanel from "../components/AnalyticsPanel";
 import { useBugs } from "../context/BugContext";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import DashboardTopbar from "../components/DashboardTopbar";
 
 function Dashboard() {
   const { bugs } = useBugs();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <div className="app">
       <Sidebar />
 
       <main className="main-content">
+        <DashboardTopbar />
         <header>
           <div>
             <span className="eyebrow">Overview / 2026</span>
-            <h1>Dashboard</h1>
-            <p>Track and manage software issues</p>
+            <h1>Welcome, {user?.name}</h1>
+            <p>Track and manage your reported issues</p>
           </div>
 
           <button className="create-btn" 

@@ -1,6 +1,11 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import ThemeToggle from "./ThemeToggle";
 
 function Sidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const handleLogout = () => { logout(); navigate("/login", { replace: true }); };
   return (
     <aside className="sidebar">
       <div className="brand-lockup">
@@ -14,7 +19,9 @@ function Sidebar() {
         <NavLink to="/create-bug"><span className="nav-icon">＋</span>Create Bug</NavLink>
       </nav>
 
-      <div className="sidebar-footer"><span className="pulse-dot" />System operational</div>
+      <div className="sidebar-footer">
+      <ThemeToggle /><span></span>
+      <button className="logout-btn" onClick={handleLogout}>Log out</button></div>
     </aside>
   );
 }
