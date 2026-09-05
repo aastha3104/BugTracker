@@ -1,7 +1,7 @@
 import Bug from "../models/Bug.js";
 
 const nextBugId = async () => {
-  const existingBugs = await Bug.find({ id: /^BUG-\\d+$/ }).select("id").lean();
+  const existingBugs = await Bug.find({ id: /^BUG-\d+$/ }).select("id").lean();
   const latestNumber = existingBugs.reduce((highest, bug) => {
     const number = Number(bug.id.replace("BUG-", ""));
     return Number.isNaN(number) ? highest : Math.max(highest, number);
