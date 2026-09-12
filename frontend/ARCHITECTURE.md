@@ -1,4 +1,105 @@
-# BugTrack Frontend
+# Frontend Architecture
+
+## Runtime flow
+
+```mermaid
+flowchart TD
+    main[main.jsx] --> theme[ThemeProvider]
+    theme --> auth[AuthProvider]
+    auth --> bugs[BugProvider]
+    bugs --> router[BrowserRouter]
+    router --> guards[ProtectedRoute / RoleProtectedRoute]
+    guards --> pages[Pages and shared components]
+    pages --> api[Fetch API calls]
+    api --> backend[Express API]
+    backend --> mongo[(MongoDB)]
+```
+
+`main.jsx` mounts the application and global styles. Providers are nested as `ThemeProvider`, `AuthProvider`, `BugProvider`, then `BrowserRouter`. `App.jsx` defines routes. Guards handle client-side navigation, while the backend remains the authority for JWT and role authorization.
+
+## Routes
+
+| Path | Page | Access | Purpose |
+| --- | --- | --- | --- |
+| `/` | Redirect | Public | Redirects to `/login`. |
+| `/login` | `Login` | Public | Normal-user login. |
+| `/signup` | `Signup` | Public | Normal-user registration. |
+| `/admin/login` | `AdminLogin` | Public | Admin login. |
+| `/dashboard` | `Dashboard` | Authenticated user | User bug summary. |
+| `/bugs` | `AllBugs` | Authenticated user | Search, filter, edit, and delete owned bugs. |
+| `/create-bug` | `CreateBug` | Authenticated user | New bug form. |
+| `/admin/dashboard` | `AdminDashboard` | Admin | System-wide bug and user totals. |
+| `/admin/users` | `Users` | Admin | Normal-user listing. |
+
+`ProtectedRoute` redirects unauthenticated users to `/login`. `RoleProtectedRoute` redirects users to the appropriate dashboard when their role does not match. These redirects improve navigation but do not replace backend authorization.
+
+## State and API boundaries
+
+`AuthContext` calls `/api/auth/signup`, `/api/auth/login`, and `/api/auth/admin-login`, then stores the JWT and non-sensitive profile data. It exposes login, logout, and current-user state. `ThemeContext` stores the light/dark preference. `BugContext` loads `/api/bugs`, adds, updates, and deletes bugs, and includes the JWT in each request. Authenticated create and update requests send JSON with the Bearer token.
+
+The frontend uses these backend endpoints:
+
+- `/api/auth/signup`, `/api/auth/login`, `/api/auth/admin-login`
+- `/api/bugs` and `/api/bugs/:id`
+- `/api/users` from the admin dashboard and users page
+- `/api/users/stats` exists for authenticated users but is currently unused by the UI
+
+`AdminDashboard.jsx` and `Users.jsx` make their own direct user API requests rather than routing those requests through `BugContext`.
+
+## Bug data
+
+```js
+{
+  _id: "mongodb-id",
+  id: "BUG-001",
+  title: "Login button not working",
+  description: "...",
+  priority: "High",
+  severity: "Critical",
+  status: "Open",
+  assignedTo: "Developer name",
+  steps: "1. Open login page...",
+  reportedBy: "user-id-or-null",
+  createdAt: "timestamp",
+  updatedAt: "timestamp"
+}
+```
+
+The server generates `id` and assigns `reportedBy`; clients cannot choose either field. Normal users receive and modify only owned records. Admin-created or older records without `reportedBy` are displayed as `Legacy record` in the admin table. An empty database produces an empty list; there is no browser-local seed fallback.
+
+## Page and component behavior
+
+- `Dashboard.jsx` derives total, open, in-progress, and resolved counts from loaded bugs.
+- `BugTable.jsx` is the dashboard's read-only table and navigates to `/bugs` through `View All`.
+- `AllBugs.jsx` performs case-insensitive title search and exact status/priority filtering in memory. Its edit modal changes only title, priority, severity, and status. Deletion uses `window.confirm`.
+- `CreateBug.jsx` submits title, description, priority, severity, assignee, and reproduction steps. Title is browser-required.
+- `Sidebar.jsx` and `AdminSidebar.jsx` provide navigation, theme, and logout controls. Profile identity is shown in the dashboard top-right profile with one `USER` or `ADMIN` badge.
+- `DashboardTopbar.jsx` displays profile data and role badge. Its search, messages, and notifications are not functional application workflows.
+- `AnalyticsPanel.jsx` displays synthetic trend values derived from the current total; it does not consume historical analytics data. The resolution goal is calculated from currently loaded bugs.
+
+Known display mismatch: `BugTable` renders the admin `Reported By` cell before `Status`, while the header declares the reverse order.
+
+## Styling and tooling
+
+`src/App.css` contains the dashboard layout, tables, forms, modal, buttons, responsive rules, and light/dark themes. It includes multiple historical and overriding theme sections, so later rules can make maintenance and behavior harder to reason about. `src/index.css` contains global defaults. At narrow widths, sidebars narrow, statistics and form rows stack, filters become vertical, and tables scroll horizontally.
+
+The app uses React 19, React DOM 19, React Router DOM 7, Vite, and ESLint with React Hooks and React Refresh plugins. From `frontend`:
+
+```bash
+npm install
+npm run dev
+npm run lint
+npm run build
+npm run preview
+```
+
+## Limitations
+
+- No pagination, server-side search, or server-side filtering
+- No bug detail page
+- No admin bug assignment workflow
+- No functional topbar search, messages, or notifications
+- No automated tests are included# BugTrack Frontend
 
 ## Concept
 
@@ -21,6 +122,8 @@ The user and admin dashboards share a black-and-white visual system inspired by 
 - Removed the duplicate `Dashboard` button from the Create Bug page; the role-aware `Back to Dashboard` button is now the single return control.
 - Updated `AnalyticsPanel.jsx` to use grayscale chart and status colors.
 - Preserved existing bug statistics, CRUD actions, search, filters, edit modal, delete confirmation, and MongoDB-backed state.
+- Fixed new bug creation by correcting backend `BUG-###` ID detection so the next available ID is generated instead of repeatedly colliding with `BUG-001`.
+- Fixed authenticated bug requests so the JWT `Authorization` header no longer replaces `Content-Type: application/json`; create and update bodies are now parsed correctly by Express.
 
 ## Application Flow
 
@@ -62,7 +165,7 @@ Navigation is handled with React Router links and `useNavigate` calls. Protected
 
 `/login` creates user sessions and `/admin/login` creates admin sessions. `RoleProtectedRoute` prevents users from entering admin pages and prevents admins from entering the normal user dashboard. Public signup never accepts a role. Admin accounts are created with the backend `create-admin` command.
 
-Signup validates email format and the backend rejects duplicate email addresses, including database-level duplicate-key races. The user sidebar displays the signed-in user's name, email, and `USER` profile badge; the admin sidebar displays the same profile information with an `ADMIN` badge.
+Signup validates email format and the backend rejects duplicate email addresses, including database-level duplicate-key races. The dashboard top-right profile displays the signed-in user's name, email, and one `USER` or `ADMIN` badge; sidebars contain navigation, theme, and logout controls only.
 
 ## State Management
 
